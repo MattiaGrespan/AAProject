@@ -39,16 +39,16 @@ def process():
     # Standardizing the features
     x = StandardScaler().fit_transform(x)
 
-    pca = PCA(n_components=2)
-    x_pca = pca.fit_transform(x)
-    plt.scatter(x_pca[:, 0], x_pca[:, 1], c=colors, alpha=0.5)
-    plt.show()
-
-
-    #tsne = TSNE(n_components=2)
-    #x_tsne = tsne.fit_transform(x)
-    #plt.scatter(x_tsne[:,0], x_tsne[:,1], c = colors)
+    #pca = PCA(n_components=2)
+    #x_pca = pca.fit_transform(x)
+    #plt.scatter(x_pca[:, 0], x_pca[:, 1], c=colors, alpha=0.5)
     #plt.show()
+
+
+    tsne = TSNE(n_components=2)
+    x_tsne = tsne.fit_transform(x)
+    plt.scatter(x_tsne[:,0], x_tsne[:,1], c = colors)
+    plt.show()
     print('Yes')
 
 if __name__ == '__main__':

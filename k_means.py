@@ -53,6 +53,8 @@ def local_search(U, C, k, u_dict):
                 C.add(c)
             C = C_min.copy()
             cost = min_cost
+            if(i%1000 == 0):
+                print(str(i)+" done")
         #There is no need for c prime.
     return C
 

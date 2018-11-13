@@ -70,7 +70,7 @@ def local_search(U, C, k, u_dict):
 
 if __name__ == '__main__':
     n_rows = 100
-    df = pd.read_csv('../shuttle.tst', header=None, sep=' ', nrows=n_rows)
+    df = pd.read_csv('../shuttle.tst', header=None, sep=' ')#, nrows=n_rows)
     print(df.shape[0])
     print(df.head())
     print(df.iloc[1:2])
@@ -89,8 +89,8 @@ if __name__ == '__main__':
     #C_val = random.sample(range(x.shape[0]), 7)
     #C.update(C_val)
     #print(C)
-    #C = {10371, 13927, 169, 12683, 77, 3578, 7386}  # Chosen at random
-    C = {34, 38, 43, 13, 81, 56, 58}
+    C = {10371, 13927, 169, 12683, 77, 3578, 7386}  # Chosen at random
+    #C = {34, 38, 43, 13, 81, 56, 58}
     k = 7
 
     #x = np.array([[1,1],[1,2],[2,1],[2,2],[100,100],[100,101],[101,100],[101,101]])

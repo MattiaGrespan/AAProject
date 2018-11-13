@@ -5,23 +5,29 @@ import matplotlib.pyplot as plt
 from collections import defaultdict
 import pandas as pd
 import numpy as np
+from scipy.spatial import distance
 import random
+import cProfile
 
-def distance(a,b):
-    c = a-b
-    c = c*c
-    c = np.sum(c)
-    return c
+def distance_sq(a, b):
+    sum = 0
+    for i,j in zip(a,b):
+        sum += (i-j)**2
+    return sum
+    #c = a-b
+    #c = c*c
+    #c = np.sum(c**2)
+    #return c
 
 def cost_km(C, U, u_dict):
     cost = 0
     for i in range(U.shape[0]):
         c = C.pop()
         C.add(c)
-        min_d = distance(U[c], U[i])
+        min_d = distance_sq(U[c], U[i])
         min_c = c
         for center in C:
-            d = distance(U[center], U[i])
+            d = distance_sq(U[center], U[i])
             if d < min_d:
                 min_d = d
                 min_c = center
@@ -67,10 +73,9 @@ def local_search(U, C, k, u_dict):
         #There is no need for c prime.
     return C, u_dict
 
-
-if __name__ == '__main__':
+def process():
     n_rows = 100
-    df = pd.read_csv('../shuttle.tst', header=None, sep=' ')#, nrows=n_rows)
+    df = pd.read_csv('../shuttle.tst', header=None, sep=' ', nrows=n_rows)
     print(df.shape[0])
     print(df.head())
     print(df.iloc[1:2])
@@ -89,8 +94,8 @@ if __name__ == '__main__':
     #C_val = random.sample(range(x.shape[0]), 7)
     #C.update(C_val)
     #print(C)
-    C = {10371, 13927, 169, 12683, 77, 3578, 7386}  # Chosen at random
-    #C = {34, 38, 43, 13, 81, 56, 58}
+    #C = {10371, 13927, 169, 12683, 77, 3578, 7386}  # Chosen at random
+    C = {34, 38, 43, 13, 81, 56, 58}
     k = 7
 
     #x = np.array([[1,1],[1,2],[2,1],[2,2],[100,100],[100,101],[101,100],[101,101]])
@@ -125,5 +130,6 @@ if __name__ == '__main__':
     plt.scatter(x_modified[:, 0], x_modified[:, 1], c=colors, alpha=0.8)
     plt.savefig('plt.png')
 
-
-
+if __name__ == '__main__':
+    #cProfile.run('process()')
+    process()

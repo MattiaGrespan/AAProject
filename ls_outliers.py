@@ -1,51 +1,69 @@
-from sklearn.preprocessing import StandardScaler
+from k_means import cost_km
+from k_means import distance_sq
+from k_means import local_search
+
 from sklearn.manifold import TSNE
 from sklearn.decomposition import PCA
-import matplotlib.pyplot as plt
 from collections import defaultdict
+from queue import PriorityQueue
+
 import pandas as pd
-import numpy as np
-from scipy.spatial import distance
-import random
-import cProfile
+import matplotlib.pyplot as plt
 
-def distance_sq(a, b):
-    sum = 0
-    for i,j in zip(a,b):
-        sum += (i-j)**2
-    return sum
-    #c = a-b
-    #c = c*c
-    #c = np.sum(c**2)
-    #return c
 
-def cost_km(C, U_data, u_dict):
-    cost = 0
-    for i in range(U_data.shape[0]):
+#Z: is the set of outliers.
+#z: is the number of outliers removed at every iteration.
+#C: is the set of centers.
+#U: is the universe of set of points with nxd dimensions.
+#u_dict: is the dictionary containing association of every point to its center.
+
+#TODO: check this function.
+def outliers_farthest(C, U_data, Z, z):
+    U = set(i for i in range(U_data.shape(0)))
+    U_prime = U - Z
+    q = PriorityQueue(z)
+
+    for i in U_prime:
         c = C.pop()
         C.add(c)
         min_d = distance_sq(U_data[c], U_data[i])
         min_c = c
-        for center in C:
-            d = distance_sq(U_data[center], U_data[i])
-            if d < min_d:
-                min_d = d
-                min_c = center
+        if i not in C:
+            for center in C:
+                d = distance_sq(U_data[i], U_data[center])
+                if d < min_d:
+                    min_d = d
+                    min_c = center
+            if q.qsize() == q.maxsize:
+                val = q.pop()
+                if val[0] < min_d:
+                    q.put((min_d, i))
+                else:
+                    q.put(val)
+            else:
+                q.put((val, i))
 
-        #Update the center in the dictionary:
-        cost += min_d
-        u_dict[i] = min_c
-    return cost
+    while not q.empty():
+        next_item = q.get()
+        Z.add(next_item[1])
+        #print(next_item)
+    return Z
 
 
-#TODO: Check this code with mattia.
-def local_search(U_data, C, k, u_dict):
-    alpha = 1 #Set it to some high value.
+def ls_outlier(U_data, C, k, u_dict, z):
+    Z = set()
+    Z = outliers_farthest(C, U_data, Z, z)
+
+    alpha = 1
     cost = cost_km(C, U_data, u_dict)
-    alpha = cost*2
+    alpha = cost * 2
+
     while alpha*(1-(0.0001/k)) > cost:
-        C_prime = C.copy()
         alpha = cost
+
+        #Step 1: TODO: Start working here.
+        #C = local_search(U_data, C, k, u_dict)
+
         for i in range(U_data.shape[0]):
             C_min = C.copy()
             min_cost = cost
@@ -73,6 +91,7 @@ def local_search(U_data, C, k, u_dict):
         #There is no need for c prime.
     return C, u_dict
 
+
 def process():
     n_rows = 100
     df = pd.read_csv('../shuttle.tst', header=None, sep=' ', nrows=n_rows)
@@ -90,20 +109,18 @@ def process():
         val = y[i][0]
         colors.append(color_dict[val])
 
-    #C = set()
-    #C_val = random.sample(range(x.shape[0]), 7)
-    #C.update(C_val)
-    #print(C)
-    #C = {10371, 13927, 169, 12683, 77, 3578, 7386}  # Chosen at random
+    # C = set()
+    # C_val = random.sample(range(x.shape[0]), 7)
+    # C.update(C_val)
+    # print(C)
+    # C = {10371, 13927, 169, 12683, 77, 3578, 7386}  # Chosen at random
     C = {34, 38, 43, 13, 81, 56, 58}
     k = 7
 
-    #x = np.array([[1,1],[1,2],[2,1],[2,2],[100,100],[100,101],[101,100],[101,101]])
-    #y = np.array([1,1,1,1,2,2,2,2])
-    #C = {0, 1}
-    #k = 2
-
-
+    # x = np.array([[1,1],[1,2],[2,1],[2,2],[100,100],[100,101],[101,100],[101,101]])
+    # y = np.array([1,1,1,1,2,2,2,2])
+    # C = {0, 1}
+    # k = 2
 
     u_dict = defaultdict(dict)
     for val in C:
@@ -111,10 +128,10 @@ def process():
 
     C, u_dict = local_search(x, C, k, u_dict)
 
-    #Visualizing the clusters.
-    color_dict = defaultdict(str) #Holds the color for each center now.
+    # Visualizing the clusters.
+    color_dict = defaultdict(str)  # Holds the color for each center now.
     colors = ['red', 'blue', 'green', 'black', 'orange', 'brown', 'purple']
-    for c, color in zip(C,colors):
+    for c, color in zip(C, colors):
         color_dict[c] = color
 
     colors = []
@@ -125,12 +142,11 @@ def process():
     pca = PCA(n_components=2)
     tsne = TSNE(n_components=2)
     x_modified = pca.fit_transform(x)
-    #x_modified = tsne.fit_transform(x)
+    # x_modified = tsne.fit_transform(x)
     plt.figure(1)
     plt.scatter(x_modified[:, 0], x_modified[:, 1], c=colors, alpha=0.8)
     plt.savefig('plt.png')
     plt.show()
 
 if __name__ == '__main__':
-    #cProfile.run('process()')
     process()

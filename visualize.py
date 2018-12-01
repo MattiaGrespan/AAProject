@@ -21,20 +21,25 @@ def process():
     print(df.iloc[1:2])
     '''
 
-    df = pd.read_csv('../shuttle.tst', header=None, sep=' ')
+    df = pd.read_csv('../bezdekIris.data', header=None, sep=',')
     print(df.shape[0])
     print(df.head())
     print(df.iloc[1:2])
 
     # Separating out the features
-    x = df.loc[:, df.columns != 9].values
+    x = df.loc[:, df.columns != 4].values
     # Separating out the target
-    y = df.loc[:, df.columns == 9].values
+    y = df.loc[:, df.columns == 4].values
     color_dict = {1: 'red', 2: 'blue', 3:'green', 4:'black', 5:'orange', 6:'brown', 7:'purple'}
+
+    #For iris dataset: only
+    label_dict = {"Iris-setosa":1, "Iris-versicolor":2, "Iris-virginica":3}
+    ##############
+
     colors = []
     for i in range(y.shape[0]):
         val = y[i][0]
-        colors.append(color_dict[val])
+        colors.append(color_dict[label_dict[val]])
 
     # Standardizing the features
     x = StandardScaler().fit_transform(x)
@@ -52,5 +57,19 @@ def process():
     print('Yes')
 
 if __name__ == '__main__':
-    process()
+    from queue import PriorityQueue
+    q = PriorityQueue(2)
+    q.put(2)
+    q.put(3)
+
+    if q.qsize() == q.maxsize:
+        val = q.get()
+        if val < 1:
+            q.put(1)
+        else:
+            q.put(val)
+    while not q.empty():
+        next_item = q.get()
+        print(next_item)
+    #process()
 

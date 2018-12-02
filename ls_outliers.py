@@ -1,6 +1,7 @@
 from k_means import cost_km
 from k_means import distance_sq
 from k_means import local_search
+from gaussiandataset import create_dataset
 
 from sklearn.manifold import TSNE
 from sklearn.decomposition import PCA
@@ -37,7 +38,7 @@ def visualize(C, X, u_dict, f_i):
     x_modified = pca.fit_transform(X)
     plt.figure(f_i)
     plt.scatter(x_modified[:, 0], x_modified[:, 1], c=colors, alpha=0.8)
-    plt.savefig('plt.png')
+    plt.savefig("plt"+str(f_i)+".png")
     #plt.show()
 
 def binary_search(arr, l, r, x):
@@ -203,7 +204,7 @@ def ls_outlier(U_data, C, k, u_dict, z):
             if(i%1000 == 0):
                 print(str(i)+" done")
         #There is no need for C_prime. C containts the updated centers.
-        print("LS_Outlier loop %d count %d" % (counter, len(Z_prime)))
+        print("LS_Outlier loop %d count %d. C1: %d  Cp: %d" % (counter, len(Z_prime), cost, alpha))
         # (1-(0.0001/k))
         val = alpha*(1-(0.0001/k))
         if alpha*hyperparam > cost:
@@ -246,6 +247,10 @@ def process():
     #k = 2
     #z = 2
 
+    x = create_dataset()
+    C = {0, 1500}
+    z = 70
+
     u_dict = defaultdict(dict)
     for val in C:
         u_dict[val] = val
@@ -259,7 +264,7 @@ def process():
         color_dict[c] = color
 
     colors = []
-    for i in range(y.shape[0]):
+    for i in range(x.shape[0]):
         center = u_dict[i]
         if center == -1:
             colors.append('silver')

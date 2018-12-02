@@ -10,6 +10,7 @@ from queue import PriorityQueue
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
+import random
 
 
 #Z: is the set of outliers.
@@ -37,9 +38,66 @@ def visualize(C, X, u_dict, f_i):
     plt.figure(f_i)
     plt.scatter(x_modified[:, 0], x_modified[:, 1], c=colors, alpha=0.8)
     plt.savefig('plt.png')
-    plt.show()
+    #plt.show()
 
-#TODO: check this function.
+def binary_search(arr, l, r, x):
+    if l == r-1:
+        d1 = x - 1
+        d2 = r - x
+        if d1 > d2:
+            return r
+        else:
+            return l
+    mid = l + (r - l) / 2
+    if arr[mid] == x:
+        return mid
+    elif arr[mid] > x:
+        return binary_search(arr, l, mid - 1, x)
+    else:
+        return binary_search(arr, mid + 1, r, x)
+
+
+def outliers_kmeansplusplus(C, U, U_data, Z, z, u_dict):
+    U_prime = U - Z
+    outliers = set()
+
+    distances = np.zeros((len(U_prime), 2))
+    distances_cdf = np.zeros(distances.shape[0])
+    counter = 0
+    for i in U_prime:
+        c = C.pop()
+        C.add(c)
+        min_d = distance_sq(U_data[c], U_data[i])
+        min_c = c
+        if i not in C:
+            for center in C:
+                d = distance_sq(U_data[i], U_data[center])
+                if d < min_d:
+                    min_d = d
+                    min_c = center
+            if counter == 0:
+                distances_cdf[counter] = min_d
+            else:
+                distances_cdf[counter] = distances_cdf[counter-1] + min_d
+            distances[counter, 0] = min_d
+            distances[counter, 1] = i
+            counter += 1
+
+    for i in range(z):
+        val = random.randint(distances_cdf[0], distances_cdf[-1])
+        idx = binary_search(distances_cdf, 0, len(distances_cdf), val)
+        outliers.add(distances[idx, 1])
+        np.delete(distances, idx, 0)
+
+        distances_cdf = np.zeros(distances.shape[0])
+        psum = 0
+        d_i = 0
+        for d in distances:
+            psum += d
+            distances_cdf[d_i] = psum
+
+    return outliers
+
 # This function returns the outliers and puts the key value for outliers to -1.
 def outliers_farthest(C, U, U_data, Z, z, u_dict):
     U_prime = U - Z
@@ -78,13 +136,16 @@ def ls_outlier(U_data, C, k, u_dict, z):
     U = set(i for i in range(U_data.shape[0]))
     Z = set()
     Z = outliers_farthest(C, U, U_data, Z, z, u_dict)
+    #outliers_kmeansplusplus(C, U, U_data, Z, z, u_dict)
     alpha = 1
     cost = cost_km(C, U-Z, U_data, u_dict)
     alpha = cost * 2
     visualize(C, U_data, u_dict, 0)
 
     counter = 0
-    while alpha*(1-(0.0001/k)) > cost:
+    # (1-(0.0001/k))
+    hyperparam = 0.85
+    while alpha*hyperparam > cost:
         counter += 1
         alpha = cost
 
@@ -143,8 +204,9 @@ def ls_outlier(U_data, C, k, u_dict, z):
                 print(str(i)+" done")
         #There is no need for C_prime. C containts the updated centers.
         print("LS_Outlier loop %d count %d" % (counter, len(Z_prime)))
+        # (1-(0.0001/k))
         val = alpha*(1-(0.0001/k))
-        if alpha*(1-(0.0001/k)) > cost:
+        if alpha*hyperparam > cost:
             C = C_prime.copy()
             Z = Z_prime.copy()
             u_dict = u_dict_prime.copy()

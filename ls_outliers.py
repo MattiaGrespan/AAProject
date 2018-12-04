@@ -12,6 +12,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
 import random
+import math
 
 
 #Z: is the set of outliers.
@@ -42,27 +43,45 @@ def visualize(C, X, u_dict, f_i):
     #plt.show()
 
 def binary_search(arr, l, r, x):
-    if l == r-1:
-        d1 = x - 1
-        d2 = r - x
-        if d1 > d2:
-            return r
-        else:
-            return l
-    mid = l + (r - l) / 2
-    if arr[mid] == x:
-        return mid
-    elif arr[mid] > x:
-        return binary_search(arr, l, mid - 1, x)
-    else:
-        return binary_search(arr, mid + 1, r, x)
+    mid = 0
+    while l < r:
+        mid = int((l + r) / 2)
+        if arr[mid] == x:
+            return arr[mid], mid
 
+        if x < arr[mid]:
+            if mid > 0 and x > arr[mid-1]:
+                val = 0
+                idx = 0
+                if x - arr[mid-1] >= arr[mid] - x:
+                    val = arr[mid]
+                    idx = mid
+                else:
+                    val = arr[mid-1]
+                    idx = mid-1
+                return val, idx
+            r = mid
+        else:
+            if mid < len(arr)-1 and x < arr[mid+1]:
+                val = 0
+                idx = 0
+                if x - arr[mid] >= arr[mid+1] - x:
+                    val = arr[mid+1]
+                    idx = mid+1
+                else:
+                    val = arr[mid]
+                    idx = mid
+                return val, idx
+            l = mid+1
+
+    return arr[mid], mid
 
 def outliers_kmeansplusplus(C, U, U_data, Z, z, u_dict):
     U_prime = U - Z
     outliers = set()
 
-    distances = np.zeros((len(U_prime), 2))
+    distances = np.zeros(len(U_prime)-len(C))
+    distances_idx = np.zeros(distances.shape[0], 'int')
     distances_cdf = np.zeros(distances.shape[0])
     counter = 0
     for i in U_prime:
@@ -80,15 +99,17 @@ def outliers_kmeansplusplus(C, U, U_data, Z, z, u_dict):
                 distances_cdf[counter] = min_d
             else:
                 distances_cdf[counter] = distances_cdf[counter-1] + min_d
-            distances[counter, 0] = min_d
-            distances[counter, 1] = i
+            distances[counter] = min_d
+            distances_idx[counter] = i
             counter += 1
 
-    for i in range(z):
+    while len(outliers) < z and len(distances) >= 1:
         val = random.randint(distances_cdf[0], distances_cdf[-1])
-        idx = binary_search(distances_cdf, 0, len(distances_cdf), val)
-        outliers.add(distances[idx, 1])
-        np.delete(distances, idx, 0)
+        val, idx = binary_search(distances_cdf, 0, len(distances_cdf)-1, val)
+        outlier = distances_idx[idx]
+        outliers.add(outlier)
+        u_dict[outlier] = -1
+        distances = np.delete(distances, idx)
 
         distances_cdf = np.zeros(distances.shape[0])
         psum = 0
@@ -96,6 +117,7 @@ def outliers_kmeansplusplus(C, U, U_data, Z, z, u_dict):
         for d in distances:
             psum += d
             distances_cdf[d_i] = psum
+            d_i += 1
 
     return outliers
 
@@ -136,8 +158,7 @@ def outliers_farthest(C, U, U_data, Z, z, u_dict):
 def ls_outlier(U_data, C, k, u_dict, z):
     U = set(i for i in range(U_data.shape[0]))
     Z = set()
-    Z = outliers_farthest(C, U, U_data, Z, z, u_dict)
-    #outliers_kmeansplusplus(C, U, U_data, Z, z, u_dict)
+    Z = outliers_kmeansplusplus(C, U, U_data, Z, z, u_dict)
     alpha = 1
     cost = cost_km(C, U-Z, U_data, u_dict)
     alpha = cost * 2
@@ -158,10 +179,10 @@ def ls_outlier(U_data, C, k, u_dict, z):
 
         # Step 2: After this step u_dict_s2 holds.
         min_u_dict_s2 = u_dict.copy()
-        outliers = outliers_farthest(C, U, U_data, Z, z, min_u_dict_s2)
+        outliers = outliers_kmeansplusplus(C, U, U_data, Z, z, min_u_dict_s2)
         Z_new = outliers | Z
         cost_2 = cost_km(C, U-Z_new, U_data, min_u_dict_s2)
-        if alpha*(1-(0.0001/k)) > cost_2:
+        if alpha*hyperparam > cost_2:
             Z_prime = Z_new
             cost = cost_2
             u_dict_prime = min_u_dict_s2.copy()
@@ -172,9 +193,17 @@ def ls_outlier(U_data, C, k, u_dict, z):
 
         # Step 3: TODO: Working here. Confused when do we swap ? Like do we find one potential minimal swap fro all U's and C's and just swap once ?
         min_u_dict_s3 = u_dict.copy()
+        C_backup = C.copy()
+        Z_backup = Z.copy()
+        u_dict_backup = u_dict.copy()
         for i in U:  # Check with mattiah about doing U-Z.
+            C = C_backup.copy()
+            Z = Z_backup.copy()
+            u_dict = u_dict_backup.copy()
             if i in C:
                 continue
+            if i in Z:
+                Z.remove(i)
             C_min = C.copy()
             min_cost = cost
             u_dict_s3 = u_dict.copy()
@@ -187,7 +216,7 @@ def ls_outlier(U_data, C, k, u_dict, z):
                 for z_i in Z:
                     u_dict_s3[z_i] = -1
 
-                outliers = outliers_farthest(C, U, U_data, Z, z, u_dict_s3)
+                outliers = outliers_kmeansplusplus(C, U, U_data, Z, z, u_dict_s3)
                 cost_3 = cost_km(C, U-(Z | outliers), U_data, u_dict_s3)
                 if (cost_3 < min_cost):
                     C_min = C.copy()
@@ -196,6 +225,9 @@ def ls_outlier(U_data, C, k, u_dict, z):
                     Z_prime = Z | outliers
                     C_prime = C.copy()
                     u_dict_prime = u_dict_s3.copy()
+                    print(C)
+                    print(outliers)
+                    print(Z_prime)
                 C.remove(i)
                 C.add(c)
             #C = C_min.copy()
@@ -241,14 +273,15 @@ def process():
     k = 7
     z = 7
 
-    #x = np.array([[1,1],[1,2],[2,1],[2,2],[101,101],[101,102],[102,101], [102,102], [0,1000], [300,300]])
-    #y = np.array([1,1,1,1,2,2,2,2,3,4])
-    #C = {0, 4}
-    #k = 2
-    #z = 2
+    x = np.array([[1,1],[1,2],[2,1],[2,2],[101,101],[101,102],[102,101], [102,102], [0,1000], [300,300]])
+    y = np.array([1,1,1,1,2,2,2,2,3,4])
+    C = {0, 4}
+    k = 2
+    z = 2
 
     x = create_dataset()
     C = {0, 1500}
+    k = 2
     z = 70
 
     u_dict = defaultdict(dict)
@@ -278,7 +311,7 @@ def process():
     plt.figure(1)
     plt.scatter(x_modified[:, 0], x_modified[:, 1], c=colors, alpha=0.8)
     plt.savefig('plt.png')
-    plt.show()
+    #plt.show()
 
 if __name__ == '__main__':
     process()
